@@ -79,6 +79,14 @@ LABELS = {
             "date_code", "country_of_origin", "lot_code",
         ],
     ),
+    # wafer.space reel label: the product-label fields on 62 x 28.9 mm stock,
+    # rendered by reel.py (fixed "Signature" layout, Data Matrix only).
+    "reel": dict(
+        required=[
+            "customer_part_number", "supplier_part_number", "quantity",
+            "date_code", "lot_code", "country_of_origin",
+        ],
+    ),
 }
 
 # --- Built-in layouts (mirror the EIGP 114 example labels) -------------------

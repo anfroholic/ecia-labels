@@ -10,8 +10,12 @@ Backward compatible: a logistic ``fields`` map without ``items`` is treated as
 a single line item built from the flat per-line keys (and an optional top-level
 ``print_run`` block, kept for older files).
 
+Reel labels (wafer.space) use the product fields: ``fields`` holds values
+shared by every reel and an optional ``reels`` array lists one object per reel.
+
 Returns (label_type, payload, warnings):
   * product  -> payload = {"fields": {...}}
+  * reel     -> payload = {"reels": [ {...}, ... ]}
   * logistic -> payload = {"shipment": {...}, "items": [ {...}, ... ]}
 """
 from __future__ import annotations
@@ -84,13 +88,14 @@ def _resolve_dis(fields: dict):
 # --------------------------------------------------------------------------- #
 # product
 # --------------------------------------------------------------------------- #
-def _validate_product(data: dict, raw_fields: dict, warnings: list) -> dict:
+def _validate_product(data: dict, raw_fields: dict, warnings: list,
+                      label_type: str = "product") -> dict:
     if data.get("print_run") is not None:
         raise ValidationError("print_run is only valid for logistic labels")
     if "items" in raw_fields:
         raise ValidationError("items[] is only valid for logistic labels")
 
-    required = spec.LABELS["product"]["required"]
+    required = spec.LABELS[label_type]["required"]
     for key in required:
         if key not in raw_fields:
             raise ValidationError(f"required field missing: {key}")
@@ -255,6 +260,35 @@ def _validate_logistic(data: dict, raw_fields: dict, warnings: list):
 
 
 # --------------------------------------------------------------------------- #
+# reel
+# --------------------------------------------------------------------------- #
+def _validate_reel(data: dict, raw_fields: dict, warnings: list) -> list:
+    """``fields`` holds values shared by every reel; each ``reels[]`` entry
+    overrides/extends them. Without ``reels`` the shared fields are one reel."""
+    reels = data.get("reels")
+    if reels is None:
+        entries = [{}]
+    elif not isinstance(reels, list) or not reels:
+        raise ValidationError("'reels' must be a non-empty list of objects")
+    else:
+        entries = reels
+
+    out = []
+    for i, entry in enumerate(entries, 1):
+        prefix = f"reels[{i}]: " if reels is not None else ""
+        if not isinstance(entry, dict):
+            raise ValidationError(f"{prefix}each reel must be a JSON object")
+        sub: list = []
+        try:
+            fields = _validate_product(data, {**raw_fields, **entry}, sub, "reel")
+        except ValidationError as exc:
+            raise ValidationError(f"{prefix}{exc}") from exc
+        warnings.extend(prefix + w for w in sub)
+        out.append(fields)
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # entry point
 # --------------------------------------------------------------------------- #
 def validate(data: dict):
@@ -265,9 +299,12 @@ def validate(data: dict):
         raise ValidationError(
             f"label_type must be one of {sorted(spec.LABELS)}, got {label_type!r}")
 
-    raw_fields = data.get("fields")
+    raw_fields = data.get("fields", {} if label_type == "reel" else None)
     if not isinstance(raw_fields, dict):
         raise ValidationError("'fields' must be a JSON object")
+
+    if label_type == "reel":
+        return label_type, {"reels": _validate_reel(data, raw_fields, warnings)}, warnings
 
     if label_type == "product":
         fields = _validate_product(data, raw_fields, warnings)

@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 from . import layout as layout_mod
-from . import production, spec, validate, verify
+from . import production, reel, spec, validate, verify
 
 LARGE_RUN_WARN = 250
 
@@ -84,6 +84,8 @@ def main(argv=None) -> int:
     seed_source = None
     if label_type == "product":
         labels_fields = [payload["fields"]]
+    elif label_type == "reel":
+        labels_fields = payload["reels"]
     else:
         shipment, items = payload["shipment"], payload["items"]
         if args.seed is not None:
@@ -104,9 +106,17 @@ def main(argv=None) -> int:
               f"HTML file; consider splitting it", file=sys.stderr)
 
     try:
-        layout = _load_layout(label_type, args.layout) if args.layout else None
-        html, messages = layout_mod.render_document(
-            label_type, labels_fields, layout)
+        if label_type == "reel":
+            if args.layout:
+                print("warning: --layout is ignored for reel labels "
+                      "(fixed layout)", file=sys.stderr)
+            html, messages, render_warnings = reel.render_document(labels_fields)
+            for w in render_warnings:
+                print(f"warning: {w}", file=sys.stderr)
+        else:
+            layout = _load_layout(label_type, args.layout) if args.layout else None
+            html, messages = layout_mod.render_document(
+                label_type, labels_fields, layout)
     except (ValueError, KeyError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -147,6 +157,8 @@ def main(argv=None) -> int:
                 res, detail = verify.verify_datamatrix(msg)
                 if not res:
                     print(f" FAIL label {i}: {detail}"); ok = False
+                if label_type == "reel":
+                    continue          # reel labels carry no 1D barcodes
                 for key in lf:
                     if key.endswith("_di") or key not in spec.FIELDS:
                         continue

@@ -183,6 +183,46 @@ spreadsheet (the `Package Count` column appears only with `--package-count`):
 | ...          | ...       | ...     | ...              | ...      | ...           |
 | 2OQWEO66GRDI | 029-HG135 | 3       | BAOCHIP-ANOTHER  | 5        | 13/13         |
 
+## wafer.space reel labels (`label_type: "reel"`)
+
+A branded EIGP 114 product label for component reels, sized for 62 × 28.9 mm
+stock (Brother DK-11209) on a 300 dpi black-only printer. The design is
+"Signature" (concept F in [planning/reel-labels.html](planning/reel-labels.html)):
+
+* the Data Matrix (ECC-200, Format 06, all six fields) sits as the centre die
+  block of a wafer. Four solid dies in the ring around it are a per-project
+  "fingerprint", picked by a hash of the project code;
+* the right-hand column has the wafer.space logo, the run, the (1P) part number
+  as the hero line, and (P), (Q), (10D), (1T) and (4L) as caption-over-value cells.
+
+It takes the same fields as the product label. `fields` holds values shared by
+every reel, and `reels` lists one object per reel. Each reel's values override
+the shared ones:
+
+```json
+{
+  "label_type": "reel",
+  "fields": { "date_code": "2647", "country_of_origin": "SG" },
+  "reels": [
+    { "customer_part_number": "MYCHIP-QFN48", "supplier_part_number": "G8037KQX",
+      "quantity": "250", "lot_code": "G803W07" }
+  ]
+}
+```
+
+```bash
+ecia-label samples/reel.json --self-test     # -> labels/reel.html, one label per page
+```
+
+The supplier part number is shown as run prefix + project code (`G803` + `7KQX`).
+The two halves are split visually by weight and spacing only; the encoded value
+is unchanged. The fingerprint is hashed from the characters after the 4-character
+run prefix. The layout is fixed (`--layout` is ignored). Values too long for their
+cell are shrunk to fit, with a warning below about 4.5 pt. The page sets
+`@page { size: 62mm 28.9mm }`, so print at 100% scale with that media selected.
+The logo lives in `ecia_labels/brand.py`, traced from a PNG. Replace it with
+paths from the original vector artwork when available.
+
 ## Optional layout override (`--layout`)
 
 The built-in layouts reproduce the EIGP 114 example labels, so you usually
@@ -245,8 +285,11 @@ ecia_labels/
   datamatrix.py          Format 06 message + ECC-200 -> SVG
   production.py          print-run breakdown, package IDs, tracking CSV
   layout.py              HTML layout engine
+  reel.py                wafer.space reel label renderer (fixed SVG layout, mm)
+  brand.py               wafer.space logo paths (traced)
   verify.py              optional decode self-test
 samples/                 example data + layout-override JSON
+planning/                reel label design exploration (open the HTML in a browser)
 ```
 
 ## AI Usage Disclaimer

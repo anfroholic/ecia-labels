@@ -1,0 +1,27 @@
+{
+  "label_type": "reel",
+  "fields": {
+    "date_code": "2647",
+    "country_of_origin": "SG"
+  },
+  "reels": [
+    {
+      "customer_part_number": "MYCHIP-QFN48",
+      "supplier_part_number": "G8037KQX",
+      "quantity": "250",
+      "lot_code": "G803W07"
+    },
+    {
+      "customer_part_number": "TT-SENSOR-A1",
+      "supplier_part_number": "G803M4ZR",
+      "quantity": "1000",
+      "lot_code": "G803W12"
+    },
+    {
+      "customer_part_number": "RISCV-SOC-QFN64",
+      "supplier_part_number": "G8039HFD",
+      "quantity": "3000",
+      "lot_code": "G803W02"
+    }
+  ]
+}
